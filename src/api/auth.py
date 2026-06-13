@@ -40,14 +40,14 @@ async def signup(
     if exist_user:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Account with this username already exists",
+            detail=messages.USER_EMAIL_OR_NAME_ALREADY_EXISTS,
         )
 
     exist_email = await user_servive.get_user_by_email(body.email)
     if exist_email:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Account with this email already exists",
+            detail=messages.USER_EMAIL_OR_NAME_ALREADY_EXISTS,
         )
 
     hashed_password = hash_handler.get_password_hash(body.password)
@@ -75,7 +75,7 @@ async def confirmed_email(token: str, db: AsyncSession = Depends(get_db)):
     return {"message": messages.USER_CONFIRMED}
 
 
-@router.post("/login", response_model=TokenModel)
+@router.post("/login", response_model=TokenModel, status_code=status.HTTP_201_CREATED)
 async def login_user(
     form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)
 ):
@@ -107,7 +107,9 @@ async def login_user(
     }
 
 
-@router.post("/refresh-token", response_model=TokenModel)
+@router.post(
+    "/refresh-token", response_model=TokenModel, status_code=status.HTTP_201_CREATED
+)
 async def refresh_token(
     request: TokenRefreshRequest, db: AsyncSession = Depends(get_db)
 ):
@@ -116,7 +118,7 @@ async def refresh_token(
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired refresh token",
+            detail=messages.INVALID_REFRESH_TOKEN,
         )
 
     new_access_token = await create_access_token(data={"sub": user.username})
@@ -137,7 +139,7 @@ async def read_item(current_user: User = Depends(get_current_user)):
     return {"message": "secret router", "owner": current_user.username}
 
 
-@router.post("/request_email")
+@router.post("/request_email", status_code=status.HTTP_201_CREATED)
 async def request_email(
     body: RequestEmail,
     background_tasks: BackgroundTasks,

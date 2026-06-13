@@ -1,7 +1,6 @@
 USER_EMAIL_OR_NAME_ALREADY_EXISTS = "User with email or name already exists"
 UNVERIFIED_CREDENTIALS = "Could not verify credentials"
 INVALID_CREDENTIALS = "Wrong email or password"
-GROUP_ALREADY_EXISTS = "Group with this name already exists"
 INTEGRITY_ERROR = "Data integrity error"
 INVALID_REFRESH_TOKEN = "Invalid or expired refresh token"
 EXCEED_REQUESTS_LIMIT = "Too many requests"
