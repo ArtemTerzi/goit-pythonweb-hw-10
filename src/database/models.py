@@ -1,6 +1,6 @@
 from datetime import datetime, date
-from sqlalchemy import Integer, String, func
-from sqlalchemy.orm import mapped_column, Mapped, DeclarativeBase
+from sqlalchemy import Integer, String, func, ForeignKey
+from sqlalchemy.orm import mapped_column, Mapped, DeclarativeBase, relationship
 from sqlalchemy.sql.sqltypes import DateTime, Date
 from typing import Optional
 
@@ -25,6 +25,10 @@ class Contact(Base):
     updated_at: Mapped[datetime] = mapped_column(
         "updated_at", DateTime, default=func.now(), onupdate=func.now()
     )
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), default=None, nullable=True
+    )
+    user: Mapped["User"] = relationship("User", back_populates="contacts")
 
 
 class User(Base):
@@ -41,3 +45,4 @@ class User(Base):
         "updated_at", DateTime, default=func.now(), onupdate=func.now()
     )
     avatar: Mapped[str] = mapped_column(String(200), nullable=True)
+    contacts: Mapped[list["Contact"]] = relationship("Contact", back_populates="user")
