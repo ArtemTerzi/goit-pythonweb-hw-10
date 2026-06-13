@@ -29,7 +29,6 @@ class ContactUpdate(BaseModel):
     description: str | None = Field(None, max_length=250)
 
 
-# User schema
 class User(BaseModel):
     id: int
     username: str
@@ -39,17 +38,10 @@ class User(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-# Scheme for registration request
 class UserCreate(BaseModel):
     username: str
-    email: str
+    email: EmailStr
     password: str
-
-
-# Token schema
-# class Token(BaseModel):
-#     access_token: str
-#     token_type: str
 
 
 class TokenModel(BaseModel):
@@ -60,3 +52,7 @@ class TokenModel(BaseModel):
 
 class TokenRefreshRequest(BaseModel):
     refresh_token: str
+
+
+class RequestEmail(BaseModel):
+    email: EmailStr
