@@ -1,202 +1,297 @@
-# 🇺🇦 Українська версія
+# REST API for Contacts Management (Contacts API)
 
-# REST API для керування контактами (Contacts API)
-
-Асинхронний вебзастосунок на базі **FastAPI** та **SQLAlchemy 2.0**, призначений для збереження, пошуку та керування контактами. Застосунок використовує базу даних **PostgreSQL** (через драйвер `asyncpg`) для збереження інформації та **Alembic** для керування міграціями.
+[English](#english) | [Українська](#українська)
 
 ---
 
-## 🛠 Технологічний стек
-* **Python 3.10+**
-* **FastAPI** (ASGI вебфреймворк)
-* **SQLAlchemy 2.0** (ORM з підтримкою асинхронного режиму)
-* **PostgreSQL** + **asyncpg** (СУБД та асинхронний драйвер)
-* **Alembic** (інструмент для міграцій бази даних)
-* **Pydantic v2** (валідація вхідних та вихідних даних)
-* **Poetry** (керування віртуальним середовищем та залежностями)
+<a name="english"></a>
+## English Version
+
+An asynchronous web application based on **FastAPI** and **SQLAlchemy 2.0**, designed to store, search, and manage contacts. The project supports user registration, JWT authorization, avatar uploads via the Cloudinary cloud service, sending emails (SMTP), rate limiting via `slowapi`, and containerization using Docker Compose.
+
+### 🛠 Tech Stack
+
+* **Python 3.12+**
+* **FastAPI** (ASGI web framework)
+* **SQLAlchemy 2.0** (ORM in async mode)
+* **PostgreSQL + asyncpg** (DBMS and async driver)
+* **Alembic** (database migration management)
+* **Pydantic v2** (data validation and serialization)
+* **Poetry** (virtual environment and dependency management)
+* **Docker & Docker Compose** (containerization)
+* **Cloudinary** (user avatar storage and transformation)
+* **Slowapi** (rate limiting for spam protection)
+* **Bcrypt / Jose (python-jose)** (password hashing and JWT token operations)
 
 ---
 
-## 🚀 Інструкція із запуску
+### ⚙️ Environment Variables Configuration
 
-### 1. Клонування проєкту та встановлення залежностей
-Переконайтеся, що у вас встановлено інструмент **Poetry**.
+Before running the application, create a **`.env`** file in the root directory of the project (next to `.env.example`) and fill it with configuration data.
 
-1. Клонуйте репозиторій та перейдіть у робочу директорію проєкту:
-   ```bash
-   git clone <url_репозиторію>
-   cd goit-pythonweb-hw-10
-   ```
-2. Встановіть залежності за допомогою Poetry:
-   ```bash
-   poetry install
-   ```
-3. Активуйте віртуальне середовище:
-   ```bash
-   poetry shell
-   ```
+#### `.env` File Example:
+
+```env
+# Parameters for PostgreSQL Docker container
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres_password
+POSTGRES_DB=contacts_db
+
+# Connection string for FastAPI (use host "db" for Docker, or "localhost" for local run)
+DB_URL=postgresql+asyncpg://postgres:postgres_password@db:5432/contacts_db
+
+# Security and JWT token configuration
+JWT_SECRET=your_secret_string_for_jwt_signatures
+JWT_ALGORITHM=HS256
+JWT_ACCESS_TOKEN_EXPIRE_MINUTES=30
+JWT_REFRESH_TOKEN_EXPIRE_MINUTES=10080
+
+# Mail server (SMTP) configuration
+MAIL_USERNAME=your_email@gmail.com
+MAIL_PASSWORD=your_app_password
+MAIL_FROM=your_email@gmail.com
+MAIL_PORT=465
+MAIL_SERVER=smtp.gmail.com
+
+# Cloudinary integration for avatar storage
+CLOUDINARY_NAME=your_cloudinary_name
+CLOUDINARY_API_KEY=your_cloudinary_api_key
+CLOUDINARY_API_SECRET=your_cloudinary_api_secret
+```
 
 ---
 
-### 2. Налаштування бази даних та змінних оточення
+### 🚀 Quick Start via Docker Compose (Recommended)
 
-Для роботи застосунку потрібна запущена база даних PostgreSQL. Ви можете використовувати локальний сервер PostgreSQL або запустити контейнер через Docker.
+The easiest way to run the entire project (FastAPI web server and PostgreSQL database) with automatic migration application:
 
-#### Запуск бази даних у Docker (якщо встановлено Docker)
+1. Make sure **Docker** / **Docker Desktop** is running on your computer.
+2. Navigate to the project folder and run:
+   ```bash
+   docker compose up --build
+   ```
+3. The server will automatically run `alembic upgrade head` to create tables and start at:
+   * **Application:** `http://localhost:8001` (according to the `8001:8000` port mapping in your compose file).
+   * **Documentation (Swagger UI):** `http://localhost:8001/docs`.
+
+---
+
+### 💻 Local Run (without Docker Compose)
+
+If you want to run the database in Docker but execute the application locally:
+
+#### 1. Start only the database in Docker
+Run the PostgreSQL container (it will expose port `5434` to your computer):
 ```bash
-docker run --name contacts-db -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=mysecretpassword -e POSTGRES_DB=contacts_api -p 5432:5432 -d postgres
+docker compose up -d db
 ```
 
-#### Налаштування файлу `.env`
-Створіть у кореневій папці проєкту файл **`.env`** та додайте параметри підключення до вашої бази даних.
-> **Зверніть увагу:** Оскільки застосунок працює асинхронно, протокол підключення має починатися з `postgresql+asyncpg://`.
-
-```ini
-DATABASE_URL=postgresql+asyncpg://postgres:mysecretpassword@localhost:5432/contacts_api
+#### 2. Update `.env` for local execution
+Since the app will run on the host machine, change `DB_URL` in your `.env` to point to `localhost` and use the external port `5434`:
+```env
+DB_URL=postgresql+asyncpg://postgres:postgres_password@localhost:5434/contacts_db
 ```
 
-Переконайтеся, що у вашому файлі `alembic.ini` (або `migrations/env.py`) налаштовано отримання URL саме з цієї змінної оточення.
+#### 3. Install dependencies and activate the virtual environment
+```bash
+poetry install
+poetry shell
+```
 
----
-
-### 3. Застосування міграцій Alembic
-Перед запуском програми необхідно налаштувати таблиці в базі даних за допомогою міграцій.
-
-Застосуйте всі наявні міграції до бази даних:
+#### 4. Run database migrations
 ```bash
 poetry run alembic upgrade head
 ```
 
----
-
-### 4. Запуск застосунку
-Запустити сервер FastAPI можна за допомогою команди:
-
+#### 5. Start the development server
 ```bash
 poetry run python main.py
+# or
+poetry run uvicorn main:app --host 127.0.0.1 --port 8000 --reload
 ```
-
-Сервер запуститься за адресою: **`http://127.0.0.1:8001`**.
+The application will be available at `http://127.0.0.1:8000/docs`.
 
 ---
 
-## 📖 Документація API
+### 📖 Main API Endpoints
 
-Після успішного запуску сервера інтерактивна документація доступна за посиланнями:
-* **Swagger UI:** [http://127.0.0.1:8001/docs](http://127.0.0.1:8001/docs)
+All requests to contacts and user profiles require authorization via the `Authorization: Bearer <token>` header.
 
-### Основні доступні маршрути (Endpoints)
+#### 🔐 Authentication (`/api/auth`)
+| Method | Route | Description |
+| :--- | :--- | :--- |
+| **POST** | `/api/auth/signup` | Register a new user (sends verification email) |
+| **POST** | `/api/auth/login` | User login (returns Access and Refresh tokens) |
+| **POST** | `/api/auth/refresh-token` | Refresh Access token using Refresh token |
+| **GET** | `/api/auth/secret` | Protected route for testing access |
 
+#### 👤 Users (`/api/users`)
+| Method | Route | Description |
+| :--- | :--- | :--- |
+| **GET** | `/api/users/me` | Retrieve the current authorized user's profile |
+| **PATCH** | `/api/users/avatar` | Update user avatar (upload file to Cloudinary) |
+
+#### 📞 Contacts (`/api/contacts`)
+| Method | Route | Description |
+| :--- | :--- | :--- |
+| **GET** | `/api/contacts/` | Retrieve contact list for the current user (with pagination and search by name, last_name, email) |
+| **GET** | `/api/contacts/birthdays` | Retrieve contacts with birthdays in the next 7 days |
+| **GET** | `/api/contacts/{contact_id}` | Retrieve detailed information about a specific contact |
+| **POST** | `/api/contacts/` | Create a new contact for the authorized user |
+| **PATCH** | `/api/contacts/{contact_id}` | Partially update information of an existing contact |
+| **DELETE** | `/api/contacts/{contact_id}` | Delete a contact from the database |
+
+---
+
+### 🛑 Rate Limiting
+
+To prevent overload or abuse of resources, **`slowapi`** is integrated.
+* Endpoints for creating and updating users/contacts have rate limits per minute from a single IP address.
+* Exceeding the limit will result in a `429 Too Many Requests` error.
+
+---
+
+<a name="українська"></a>
+## Українська версія
+
+Асинхронний вебзастосунок на базі **FastAPI** та **SQLAlchemy 2.0**, призначений для збереження, пошуку та керування контактами. Проєкт підтримує реєстрацію користувачів, JWT-авторизацію, завантаження аватарів через хмарний сервіс Cloudinary, надсилання листів (SMTP), обмеження швидкості запитів (Rate Limiting) за допомогою `slowapi` та запуск усього середовища через Docker Compose.
+
+### 🛠 Технологічний стек
+
+* **Python 3.12+**
+* **FastAPI** (ASGI вебфреймворк)
+* **SQLAlchemy 2.0** (ORM з асинхронним режимом)
+* **PostgreSQL + asyncpg** (СУБД та асинхронний драйвер)
+* **Alembic** (керування міграціями бази даних)
+* **Pydantic v2** (валідація та серіалізація даних)
+* **Poetry** (керування віртуальним середовищем та залежностями)
+* **Docker & Docker Compose** (контейнеризація бази даних та додатку)
+* **Cloudinary** (збереження та трансформація аватарів користувачів)
+* **Slowapi** (обмеження кількості запитів для захисту від спаму)
+* **Bcrypt / Jose (python-jose)** (хешування паролів та робота з JWT-токенами)
+
+---
+
+### ⚙️ Налаштування змінних оточення
+
+Перед запуском застосунку обов'язково створіть файл **`.env`** у кореневій директорії проєкту (поруч із `.env.example`) та заповніть його конфігураційними даними.
+
+#### Приклад файлу `.env`:
+
+```env
+# Параметри для Docker контейнера PostgreSQL
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres_password
+POSTGRES_DB=contacts_db
+
+# Змінна підключення до БД (використовуйте хост "db" для Docker, або "localhost" для локального запуску)
+DB_URL=postgresql+asyncpg://postgres:postgres_password@db:5432/contacts_db
+
+# Налаштування безпеки та JWT-токенів
+JWT_SECRET=ваша_секретна_строка_для_підпису_токенів_jwt
+JWT_ALGORITHM=HS256
+JWT_ACCESS_TOKEN_EXPIRE_MINUTES=30
+JWT_REFRESH_TOKEN_EXPIRE_MINUTES=10080
+
+# Налаштування поштового сервера (SMTP)
+MAIL_USERNAME=your_email@gmail.com
+MAIL_PASSWORD=your_app_password
+MAIL_FROM=your_email@gmail.com
+MAIL_PORT=465
+MAIL_SERVER=smtp.gmail.com
+
+# Інтеграція з Cloudinary для збереження аватарів
+CLOUDINARY_NAME=your_cloudinary_name
+CLOUDINARY_API_KEY=your_cloudinary_api_key
+CLOUDINARY_API_SECRET=your_cloudinary_api_secret
+```
+
+---
+
+### 🚀 Швидкий запуск через Docker Compose (Рекомендовано)
+
+Найпростіший спосіб запустити весь проєкт (вебсервер FastAPI та базу даних PostgreSQL) з автоматичним виконанням міграцій:
+
+1. Переконайтеся, що на вашому комп'ютері запущено **Docker** / **Docker Desktop**.
+2. Перейдіть до папки проєкту та виконайте команду:
+   ```bash
+   docker compose up --build
+   ```
+3. Сервер автоматично виконає команду `alembic upgrade head` для створення таблиць і запуститься за адресою:
+   * **Додаток:** `http://localhost:8001` (відповідно до конфігурації портів `8001:8000` у вашому compose-файлі).
+   * **Документація (Swagger UI):** `http://localhost:8001/docs`.
+
+---
+
+### 💻 Локальний запуск (без Docker Compose)
+
+Якщо ви бажаєте запустити базу даних у Docker, а сам додаток виконувати на локальній машині:
+
+#### 1. Запуск лише бази даних у Docker
+Запустіть контейнер PostgreSQL (він прокине порт `5434` на ваш комп'ютер):
+```bash
+docker compose up -d db
+```
+
+#### 2. Оновлення `.env` для локального запуску
+Оскільки додаток працюватиме на хості, змініть адресу підключення `DB_URL` у вашому `.env` на локальну та вкажіть зовнішній порт `5434`:
+```env
+DB_URL=postgresql+asyncpg://postgres:postgres_password@localhost:5434/contacts_db
+```
+
+#### 3. Встановлення залежностей та активація середовища
+```bash
+poetry install
+poetry shell
+```
+
+#### 4. Виконання міграцій бази даних
+```bash
+poetry run alembic upgrade head
+```
+
+#### 5. Запуск сервера розробки
+```bash
+poetry run python main.py
+# або
+poetry run uvicorn main:app --host 127.0.0.1 --port 8000 --reload
+```
+Додаток буде доступний за адресою `http://127.0.0.1:8000/docs`.
+
+---
+
+### 📖 Основні маршрути API (Endpoints)
+
+Усі запити до контактів та профілю користувача вимагають авторизації за допомогою заголовка `Authorization: Bearer <token>`.
+
+#### 🔐 Автентифікація (`/api/auth`)
 | Метод | Маршрут | Опис |
 | :--- | :--- | :--- |
-| **GET** | `/api/healthchecker` | Перевірка працездатності та з'єднання з базою даних |
-| **GET** | `/api/contacts/` | Отримання списку контактів (з підтримкою пагінації та фільтрації за `first_name`, `last_name`, `email`) |
-| **GET** | `/api/contacts/birthdays` | Отримання контактів, у яких день народження буде у найближчі 7 днів |
+| **POST** | `/api/auth/signup` | Реєстрація нового користувача (надсилає лист верифікації) |
+| **POST** | `/api/auth/login` | Вхід користувача (повертає Access та Refresh токени) |
+| **POST** | `/api/auth/refresh-token` | Оновлення Access токена за допомогою Refresh токена |
+| **GET** | `/api/auth/secret` | Тестовий захищений маршрут для перевірки доступу |
+
+#### 👤 Користувачі (`/api/users`)
+| Метод | Маршрут | Опис |
+| :--- | :--- | :--- |
+| **GET** | `/api/users/me` | Отримання профілю поточного авторизованого користувача |
+| **PATCH** | `/api/users/avatar` | Оновлення аватара користувача (завантаження файлу на Cloudinary) |
+
+#### 📞 Контакти (`/api/contacts`)
+| Метод | Маршрут | Опис |
+| :--- | :--- | :--- |
+| **GET** | `/api/contacts/` | Отримання списку контактів поточного користувача (з пагінацією та пошуком за name, last_name, email) |
+| **GET** | `/api/contacts/birthdays` | Отримання контактів, у яких день народження буде в найближчі 7 днів |
 | **GET** | `/api/contacts/{contact_id}` | Отримання детальної інформації про конкретний контакт |
-| **POST** | `/api/contacts/` | Створення нового контакту (поля `email` мають бути унікальними) |
-| **PATCH** | `/api/contacts/{contact_id}` | Оновлення окремих полів наявного контакту |
+| **POST** | `/api/contacts/` | Створення нового контакту для авторизованого користувача |
+| **PATCH** | `/api/contacts/{contact_id}` | Часткове оновлення інформації про наявний контакт |
 | **DELETE** | `/api/contacts/{contact_id}` | Видалення контакту з бази даних |
 
-
----
-___
-___
-
-# 🇺🇸 English Version
-
-# REST API for Contact Management (Contacts API)
-
-An asynchronous web application built with **FastAPI** and **SQLAlchemy 2.0**, designed for storing, searching, and managing contacts. The application utilizes a **PostgreSQL** database (via the `asyncpg` driver) for data storage and **Alembic** for managing database migrations.
-
 ---
 
-## 🛠 Technology Stack
-* **Python 3.10+**
-* **FastAPI** (ASGI web framework)
-* **SQLAlchemy 2.0** (ORM with asynchronous support)
-* **PostgreSQL** + **asyncpg** (DBMS and asynchronous driver)
-* **Alembic** (database migration tool)
-* **Pydantic v2** (input and output data validation)
-* **Poetry** (dependency and virtual environment management)
+### 🛑 Обмеження швидкості запитів (Rate Limiting)
 
----
-
-## 🚀 Getting Started
-
-### 1. Clone the Project and Install Dependencies
-Ensure you have **Poetry** installed on your system.
-
-1. Clone the repository and navigate to the project directory:
-   ```bash
-   git clone <repository_url>
-   cd goit-pythonweb-hw-10
-   ```
-2. Install dependencies using Poetry:
-   ```bash
-   poetry install
-   ```
-3. Activate the virtual environment:
-   ```bash
-   poetry shell
-   ```
-
----
-
-### 2. Database Setup and Environment Variables
-
-The application requires a running PostgreSQL database. You can use a local PostgreSQL server or run a database container via Docker.
-
-#### Running PostgreSQL in Docker (Alternative)
-```bash
-docker run --name contacts-db -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=mysecretpassword -e POSTGRES_DB=contacts_api -p 5432:5432 -d postgres
-```
-
-#### Configuring the `.env` File
-Create a **`.env`** file in the root directory of the project and add your database connection parameters.
-> **Note:** Since the application runs asynchronously, the connection protocol must start with `postgresql+asyncpg://`.
-
-```ini
-DATABASE_URL=postgresql+asyncpg://postgres:mysecretpassword@localhost:5432/contacts_api
-```
-
-Ensure that your `alembic.ini` (or `migrations/env.py`) file is configured to retrieve the database URL from this environment variable.
-
----
-
-### 3. Applying Alembic Migrations
-Before running the application, you must set up the database tables using migrations.
-
-Apply all existing migrations to your database:
-```bash
-poetry run alembic upgrade head
-```
-
----
-
-### 4. Running the Application
-You can start the FastAPI server with the following command:
-
-```bash
-poetry run python main.py
-```
-
-The server will automatically start at **`http://127.0.0.1:8001`**.
-
----
-
-## 📖 API Documentation
-
-Once the server is running, the interactive documentation is available at:
-* **Swagger UI:** [http://127.0.0.1:8001/docs](http://127.0.0.1:8001/docs)
-
-### Key API Endpoints
-
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| **GET** | `/api/healthchecker` | Verifies the database connection and service health status |
-| **GET** | `/api/contacts/` | Retrieves a list of contacts (supports pagination and filtering by `first_name`, `last_name`, `email`) |
-| **GET** | `/api/contacts/birthdays` | Retrieves contacts who have birthdays within the next 7 days |
-| **GET** | `/api/contacts/{contact_id}` | Retrieves details for a specific contact |
-| **POST** | `/api/contacts/` | Creates a new contact (`email` values must be unique) |
-| **PATCH** | `/api/contacts/{contact_id}` | Updates specific fields of an existing contact |
-| **DELETE** | `/api/contacts/{contact_id}` | Deletes a contact from the database |
+Для запобігання перевантаженню або зловживанню ресурсами (наприклад, DDoS-атакам) інтегровано бібліотеку **`slowapi`**. 
+* Ендпоінти створення та оновлення користувачів / контактів мають ліміти на кількість запитів за хвилину з однієї IP-адреси.
+* У разі перевищення ліміту сервер поверне помилку `429 Too Many Requests`.
